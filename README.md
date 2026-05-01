@@ -19,7 +19,12 @@ Format Mobile (PWA) : Le site est installable directement sur votre téléphone 
 Coulisses techniques :
 C'est un projet fait pour le fun et pour continuer mon apprentissage. Je me suis bien entendu servi de l'IA comme outil pour le JavaScript et l'optimisation mobile.
 
-Visuels : 
+Visuels :
+J'ai optimisé le visuel avant tous pour les mobile
 Le fond et l'icône ont été générés par IA. C'était une solution simple pour moi car je voulais éviter tout problème de droits d'auteur en utilisant des visuels officiels d'Aria, tout en proposant quelque chose de propre. 
 
 Open Source & Libre : Le code est à vous ! Faites-en ce que vous voulez : améliorez-le (mon code est loin d'etre propre et optimal xD) ou adaptez-le à d'autres systèmes de jeu, je le partage tel quel sans aucun souci.
+
+
+
+////je vais rajouter un bouton pour reset le solde et mettre le boutton de compte rendu en haut prochainement///
