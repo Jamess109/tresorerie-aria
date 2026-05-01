@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1008">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MA TRÉSORERIE">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>TRÉSORERIE ARIA</title>
+  <link rel="manifest" href="./manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Drawer overlay for mobile -->
+<div class="drawer-overlay" onclick="toggleDrawer(false)"></div>
+
+<!-- History toggle button -->
+<button class="btn-history-toggle" onclick="toggleDrawer()" aria-label="Historique">
+  <span style="font-size:1.5rem">📜</span>
+  <span class="toggle-label" style="font-size: 1.2rem">Historique</span>
+</button>
+
+<!-- History drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <h2>⁕ Compte rendu ⁕</h2>
+    <button class="drawer-clear" onclick="clearHistory()">✕ Effacer tout l'historique</button>
+  </div>
+  <div class="drawer-list" id="drawer-list">
+    <div class="empty-state" id="empty-state">
+      <span class="empty-icon">📜</span>
+      Aucune transaction<br>enregistrée
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Install banner -->
+  <div id="install-banner">
+    <span style="font-size:1.5rem;flex-shrink:0">📱</span>
+    <div class="banner-text">
+      Installer l'application
+      <small>Accédez à la Bourse sans navigateur</small>
+    </div>
+    <button id="btn-install" onclick="installApp()">Installer</button>
+    <button id="btn-install-dismiss" onclick="dismissInstall()" aria-label="Fermer">✕</button>
+  </div>
+
+  <div class="header">
+    <div class="header-ornament">⁕ ⁕ ⁕</div>
+    <h1>⁕ Trésorerie ⁕</h1>
+    <div class="subtitle">Registre des coffres &amp; des transactions</div>
+  </div>
+
+  <!-- Balance -->
+  <div class="card">
+    <div class="card-title">Solde Actuel</div>
+    <div class="balance-grid">
+      <div class="coin-block coin-gold" id="block-gold">
+        <div class="coin-icon">👑</div>
+        <div class="coin-label">Couronnes d'or</div>
+        <div class="coin-value" id="val-gold">0</div>
+      </div>
+      <div class="coin-block coin-silver" id="block-silver">
+        <div class="coin-icon">⚪</div>
+        <div class="coin-label">Orbes d'argent</div>
+        <div class="coin-value" id="val-silver">0</div>
+      </div>
+      <div class="coin-block coin-copper" id="block-copper">
+        <div class="coin-icon">⚚</div>
+        <div class="coin-label">Sceptres de cuivre</div>
+        <div class="coin-value" id="val-copper">0</div>
+      </div>
+      <div class="coin-block coin-iron" id="block-iron">
+        <div class="coin-icon icon-iron">🪙</div>
+        <div class="coin-label">Rois de fer</div>
+        <div class="coin-value" id="val-iron">0</div>
+      </div>
+    </div>
+    <div class="total-rois">
+      <span class="label">Total en Rois de Fer</span>
+      <span class="value" id="val-total">0 rois</span>
+    </div>
+  </div>
+
+  <!-- Operation -->
+  <div class="card">
+    <div class="card-title"> Transaction </div>
+    <div class="inputs-grid">
+      <div class="input-group">
+        <label><span class="icon">👑</span>Couronnes d'or</label>
+        <input type="number" id="in-gold"   min="0" value="0" placeholder="0">
+      </div>
+      <div class="input-group">
+        <label><span class="icon icon-silver">⚪</span>Orbes d'argent</label>
+        <input type="number" id="in-silver" min="0" value="0" placeholder="0">
+      </div>
+      <div class="input-group">
+        <label><span class="icon icon-copper">⚚</span>Sceptres de cuivre</label>
+        <input type="number" id="in-copper" min="0" value="0" placeholder="0">
+      </div>
+      <div class="input-group">
+        <label><span class="icon icon-iron">🪙</span>Rois de fer</label>
+        <input type="number" id="in-iron"   min="0" value="0" placeholder="0">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-add" onclick="operate(1)">⊕ GAIN</button>
+      <button class="btn btn-sub" onclick="operate(-1)">⊖ DÉPENSE</button>
+    </div>
+    <div class="message" id="msg"></div>
+  </div>
+
+<script>
+  // ── Constants ──
+  const RATES = { gold: 1000, silver: 100, copper: 10, iron: 1 };
+  const STORAGE_KEY_BAL = 'bourse_balance';
+  const STORAGE_KEY_HIST = 'bourse_history';
+  const MAX_HISTORY = 100;
+
+  // ── State ──
+  let balance = 0;
+  let history = [];
+  let deferredInstallPrompt = null;
+
+  // ── Persistence ──
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY_BAL, String(balance));
+      localStorage.setItem(STORAGE_KEY_HIST, JSON.stringify(history));
+    } catch(e) {}
+  }
+
+  function load() {
+    try {
+      const b = localStorage.getItem(STORAGE_KEY_BAL);
+      if (b !== null) balance = Math.max(0, parseInt(b) || 0);
+      const h = localStorage.getItem(STORAGE_KEY_HIST);
+      if (h) history = JSON.parse(h);
+    } catch(e) {}
+  }
+
+  // ── Inputs ──
+  function getInputs() {
+    const g = Math.max(0, parseInt(document.getElementById('in-gold').value)   || 0);
+    const s = Math.max(0, parseInt(document.getElementById('in-silver').value) || 0);
+    const c = Math.max(0, parseInt(document.getElementById('in-copper').value) || 0);
+    const i = Math.max(0, parseInt(document.getElementById('in-iron').value)   || 0);
+    return { g, s, c, i, total: g * RATES.gold + s * RATES.silver + c * RATES.copper + i };
+  }
+
+  function clearInputs() {
+    ['in-gold','in-silver','in-copper','in-iron'].forEach(id => {
+      document.getElementById(id).value = 0;
+    });
+  }
+
+  // ── Messages ──
+  function showMsg(text, type) {
+    const el = document.getElementById('msg');
+    el.className = 'message ' + type;
+    el.textContent = text;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = 'message'; }, 3500);
+  }
+
+  // ── Animations ──
+  function animateBlocks() {
+    ['block-gold','block-silver','block-copper','block-iron'].forEach(id => {
+      const b = document.getElementById(id);
+      b.classList.remove('updating');
+      void b.offsetWidth;
+      b.classList.add('updating');
+      setTimeout(() => b.classList.remove('updating'), 400);
+    });
+  }
+
+  // ── Display (CORRIGÉ : Accolade supprimée à la ligne 86) ──
+  function updateDisplay() {
+    let total = balance;
+    
+    // 1. Calcul des Couronnes
+    let gold = Math.floor(total / 1000);
+    let rest = total % 1000;
+
+    // 2. Logique des Orbes d'Argent (Seuil 20 sceptres / 200 rois)
+    let silver = 0;
+    if (rest >= 200) {
+      silver = Math.floor(rest / 100) - 1;
+      rest -= (silver * 100);
+    } else {
+      silver = 0;
+    }
+
+    // 3. Logique des Sceptres de Cuivre (Seuil 50 rois)
+    let copper = 0;
+    let iron = 0;
+    if (rest >= 50) {
+      copper = Math.floor(rest / 10) - 4;
+      iron = rest - (copper * 10);
+    } else {
+      copper = 0;
+      iron = rest;
+    }
+
+    // Mise à jour de l'affichage HTML
+    document.getElementById('val-gold').textContent   = gold;
+    document.getElementById('val-silver').textContent = silver;
+    document.getElementById('val-copper').textContent = copper;
+    document.getElementById('val-iron').textContent   = iron;
+    document.getElementById('val-total').textContent  = total.toLocaleString('fr-FR') + ' roi' + (total !== 1 ? 's' : '');
+
+    animateBlocks();
+  }
+  // ── History rendering ──
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' }) +
+           ' · ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('drawer-list');
+    const empty = document.getElementById('empty-state');
+
+    empty.style.display = history.length === 0 ? 'flex' : 'none';
+
+    Array.from(list.querySelectorAll('.tx-item')).forEach(el => el.remove());
+
+    [...history].reverse().forEach((tx, revIdx) => {
+      const idx = history.length - 1 - revIdx;
+      const el = document.createElement('div');
+      el.className = 'tx-item ' + (tx.sign === 1 ? 'tx-add' : 'tx-sub');
+
+      const coins = [];
+      if (tx.g) coins.push(`<span class="tx-coin"><span>👑</span>${tx.g}</span>`);
+      if (tx.s) coins.push(`<span class="tx-coin"><span>⚪</span>${tx.s}</span>`);
+      if (tx.c) coins.push(`<span class="tx-coin"><span>⚚</span>${tx.c}</span>`);
+      if (tx.i) coins.push(`<span class="tx-coin"><span class="icon-iron">🪙</span>${tx.i}</span>`);
+      if (!coins.length) coins.push(`<span class="tx-coin">${tx.total.toLocaleString('fr-FR')} rois</span>`);
+
+      el.innerHTML = `
+        <div class="tx-header">
+          <span class="tx-sign">${tx.sign === 1 ? '＋' : '－'}</span>
+          <input class="tx-title-input"
+                 value="${escapeAttr(tx.title)}"
+                 placeholder="Nommer cette transaction…"
+                 data-idx="${idx}"
+                 maxlength="60">
+          <button class="tx-delete" data-idx="${idx}" title="Supprimer">✕</button>
+        </div>
+        <div class="tx-coins">${coins.join('')}</div>
+        <div class="tx-date">${formatDate(tx.date)}</div>
+      `;
+      list.appendChild(el);
+    });
+
+    list.querySelectorAll('.tx-title-input').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const i = parseInt(e.target.dataset.idx);
+        history[i].title = e.target.value;
+        save();
+      });
+    });
+    list.querySelectorAll('.tx-delete').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = parseInt(e.target.closest('button').dataset.idx);
+        history.splice(i, 1);
+        save();
+        renderHistory();
+      });
+    });
+  }
+
+  function escapeAttr(str) {
+    return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function addToHistory(sign, g, s, c, i, total) {
+    const tx = { sign, g, s, c, i, total, title: '', date: new Date().toISOString() };
+    history.push(tx);
+    if (history.length > MAX_HISTORY) history.shift();
+    save();
+    renderHistory();
+  }
+
+  function clearHistory() {
+    if (!confirm('Effacer tout l\'historique des transactions ?')) return;
+    history = [];
+    save();
+    renderHistory();
+  }
+
+  // ── Operations ──
+  function operate(sign) {
+    const { g, s, c, i, total } = getInputs();
+    if (total === 0) { showMsg('Veuillez saisir au moins une valeur.', 'error'); return; }
+    const newBalance = balance + sign * total;
+    if (newBalance < 0) { showMsg('⚠ Fonds insuffisants ! La bourse ne peut être à découvert.', 'error'); return; }
+    balance = newBalance;
+    save();
+    updateDisplay();
+    addToHistory(sign, g, s, c, i, total);
+    clearInputs();
+    const action = sign === 1 ? 'ajoutés' : 'soustraits';
+    showMsg(`✓ ${total.toLocaleString('fr-FR')} roi${total !== 1 ? 's' : ''} ${action}.`, 'success');
+  }
+
+  // ── Drawer ──
+  let drawerOpen = false;
+  function toggleDrawer(forceState) {
+    drawerOpen = forceState !== undefined ? forceState : !drawerOpen;
+    document.getElementById('drawer').classList.toggle('open', drawerOpen);
+    document.body.classList.toggle('drawer-open', drawerOpen);
+  }
+
+  // ── PWA ──
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const dismissed = localStorage.getItem('bourse_install_dismissed');
+    if (!dismissed) document.getElementById('install-banner').classList.add('visible');
+  });
+
+  function installApp() {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+      document.getElementById('install-banner').classList.remove('visible');
+    });
+  }
+
+  function dismissInstall() {
+    document.getElementById('install-banner').classList.remove('visible');
+    localStorage.setItem('bourse_install_dismissed', '1');
+  }
+
+  // ── Service Worker (fichier sw.js dans le repo) ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  // ── Init ──
+  load();
+  updateDisplay();
+  renderHistory();
+</script>
+</body>
+</html>

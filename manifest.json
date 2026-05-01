@@ -1,0 +1,18 @@
+{
+  "name": "TRÉSORERIE ARIA",
+  "short_name": "Aria Bourse",
+  "description": "Registre des coffres & des transactions",
+  "start_url": "/tresorerie-aria/index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1008",
+  "theme_color": "#1a1008",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
